@@ -4,34 +4,44 @@ using System.Collections.Generic;
 namespace lab4
 {
     /// <summary>
-    /// Represents a route of public transport
+    /// A route of public transport
     /// </summary>
-    class Route<T> where T: Vehicle
+    class Route
     {
-        public List<T> AutoPark {get; private set;} 
+        /// <summary>
+        /// First stop in the route
+        /// </summary>
         public Stop Start {get; private set;}
+        
+        /// <summary>
+        /// Last stop in the route
+        /// </summary>
         public Stop End {get; private set;}
 
+        /// <summary>
+        /// Time to get from first to last stop
+        /// </summary>
         public int Time {get; private set;}
 
-
-        public int AutoParkSize
-        {
-            get {
-                return AutoPark.Count;
-            }
-        }
-
+        /// <summary>
+        /// Start and End of the route
+        /// </summary>
         public string FullRoute {
             get {
                 return Start.Name + "-" + End.Name;
             }
         }
-
-
-        public Route(List<T> vehicles, Stop start, Stop end, int time)
+        
+        /// <summary>
+        /// Identifier of a route
+        /// </summary>
+        public int RouteNum {get; private set;}
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public Route(int number, Stop start, Stop end, int time)
         {
-            AutoPark = vehicles;
+            RouteNum = number;
             Start = start;
             End = end; 
             Time = time;

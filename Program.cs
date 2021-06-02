@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
+using System.Xml;
 
 namespace lab4
 {
@@ -12,145 +14,141 @@ namespace lab4
         }
         static void Main(string[] args)
         {
-            var fact = new RouteFactory();
-            var depot = new Depot<Trolley>()
-                .AddRoute(fact.Create(5, "Poznyaky", "Akademmistechko", 25))
-                .AddRoute(fact.Create(6, "Poznyaky", "KPI", 40))
-                .AddRoute(fact.Create(4, "Poznyaky", "Polyana", 25))
-                .AddRoute(fact.Create(3, "Bucha", "Poznyaky", 12))
-                .AddRoute(fact.Create(2, "KPI", "Polyana", 1)); 
+            var routeFact = new RouteFactory();
+            var trolleyFact = new TrolleyFactory();
+            var autoPark = new TransportSystem<Trolley>();
+            autoPark
+                .AddRoute(routeFact.Create("KPI", "Poznyaki", 35))
+                .AddRoute(routeFact.Create("Polyova", "Vokzalna", 5))
+                .AddRoute(routeFact.Create("Bucha", "KPI", 55))
+                .AddRoute(routeFact.Create("Vokzalna", "Obolon", 35))
+                .AddRoute(routeFact.Create("Bucha", "Vokzalna", 15));
+            autoPark
+                .AddTransport(trolleyFact.Create(1, 5))
+                .AddTransport(trolleyFact.Create(2, 3))
+                .AddTransport(trolleyFact.Create(3, 2))
+                .AddTransport(trolleyFact.Create(4, 5))
+                .AddTransport(trolleyFact.Create(5, 4));
 
-            // select
-            // 1 select all trolley numbers
-            var q1 = depot.Routes.Select(route => route.AutoPark.Select(trolley => trolley.SerialNum));
-            foreach(var row in q1) {
-                foreach (var elem in row) {
-                    Console.Write(elem + ", ");
+            XmlWriterSettings settings = new XmlWriterSettings();
+            settings.Indent = true;
+            using (XmlWriter writer = XmlWriter.Create("pTransport.xml", settings))
+            {
+                writer.WriteStartElement("transportSystem");
+                foreach (var route in autoPark.Routes)
+                {
+                    writer.WriteStartElement("route");
+                    writer.WriteAttributeString("routeNum", route.RouteNum.ToString());
+                    writer.WriteAttributeString("startStop", route.Start.Name);
+                    writer.WriteAttributeString("endStop", route.End.Name);
+                    writer.WriteAttributeString("time", route.Time.ToString());
+                    writer.WriteEndElement();
                 }
-                Console.WriteLine();
+                foreach (var trolley in autoPark.Transport)
+                {
+                    writer.WriteStartElement("trolley");
+                    writer.WriteAttributeString("serialNum", trolley.SerialNum);
+                    writer.WriteAttributeString("routeNum", trolley.ActiveRoute.ToString());
+                    writer.WriteEndElement();
+                }
+                writer.WriteEndElement();
             }
-            SpaceAround();
-            // sort
-            // 2 select all routes sorted by time ascending and autiparkSize descending
-            var q2 = from route in depot.Routes
-                orderby route.Time ascending, route.AutoParkSize descending
-                select  route.FullRoute;
-            foreach (var route in q2) {
-                Console.WriteLine(route);
+            var xmlDoc = XDocument.Load("pTransport.xml");
+
+            // q1 all unique stops sorted ascending
+            var q1 = xmlDoc.Descendants("route").Select(p => p.Attribute("startStop").Value).Distinct().OrderBy(x => x);
+            foreach (var trolley in q1) {
+                System.Console.WriteLine(trolley);
             }
             SpaceAround();
 
-            // filter
-            // 3 select routes without "Poznyaki"
-            var q3 = depot.Routes.Where(route => route.End.Name != "Poznyaky" && route.Start.Name != "Poznyaky")
-                .Select(route => route.FullRoute);
-            foreach (var route in q3) {
-                Console.WriteLine(route);
+            // q2 group busses by routes
+            var q2 = xmlDoc.Descendants("route").GroupJoin(
+                xmlDoc.Descendants("trolley"),
+                route => route.Attribute("routeNum").Value,
+                trolley => trolley.Attribute("routeNum").Value,
+                (route, trolleys) => new { Start=route.Attribute("startStop").Value, SerialNum=trolleys.Select(tr => tr.Attribute("serialNum").Value) }
+                );
+            foreach (var info in q2) {
+                System.Console.WriteLine("From {0} start busses", info.Start);
+                foreach (var serialNum in info.SerialNum) {
+                    System.Console.WriteLine(serialNum);
+                }
+            }
+            SpaceAround();
+
+            // q3 how many busses does each route has
+            var q3 = xmlDoc.Descendants("trolley").Select(p => p.Attribute("routeNum").Value).GroupBy(x => x).Select(x => x.Count());
+            foreach (var busCount in q3)
+            {
+                System.Console.WriteLine(busCount);
+            }
+            SpaceAround();
+
+            // q4 busses which route is longer than 15 m
+            var q4 = from trolley in xmlDoc.Descendants("trolley")
+                join route in xmlDoc.Descendants("route") on trolley.Attribute("routeNum").Value equals route.Attribute("routeNum").Value
+                where Convert.ToInt32(route.Attribute("time").Value) < 15
+                select trolley.Attribute("serialNum").Value + "-" + route.Attribute("startStop").Value + "-" + route.Attribute("endStop").Value;
+            foreach (var route in q4)
+            {
+                System.Console.WriteLine(route);
+            }
+            SpaceAround();
+
+            // q5 select top 3 shortest routes
+            var q5 = xmlDoc.Descendants("route").OrderBy(x => x.Attribute("time").Value).Select(x => x.Attribute("routeNum").Value).Take(3);
+            foreach (var route in q5)
+            {
+                System.Console.WriteLine(route);
             }
             SpaceAround();
             
-            // group by
-            // 4 select grouped by start stop routes
-            var q4 = from route in depot.Routes
-                    group route.FullRoute
-                    by route.End.Name;
-            foreach (var route in q4) {
-                foreach(var group in route) Console.WriteLine(group);
-                SpaceAround('-');
-            }
-            SpaceAround();
-
-            // filter + union
-            // 5 select routes which are shorter than 13 minutes long and longer than 30
-            var q5 = depot.Routes.Where(route => route.Time < 13)
-                .Union(depot.Routes.Where(route => route.Time > 30));
-                foreach (var route in q5) {
-                    Console.WriteLine(route.FullRoute);
-                }
-                SpaceAround();
-
-            // join
-            // 6 select routes joined by first and last stop
-            var q6 = from route in depot.Routes
-                join route2 in depot.Routes on route.End.Name equals route2.Start.Name
-                select route.FullRoute + "-" + route2.End.Name;
-            foreach (var route in q6) {
-                Console.WriteLine(route);
-            }
-            SpaceAround();
-
-            // sorting
-            // 7 select top 2 shortest rides
-            var q7 = depot.Routes.OrderBy(route => route.Time).Take(2);
-            foreach (var route in q7) {
-                Console.WriteLine(route.FullRoute);
-            }
-            SpaceAround();
-
-            // aggregation
-            // 8 select how much stops contain KPI
-            var q8 = depot.Routes.Count(route => route.FullRoute.Contains("KPI"));
-            Console.WriteLine(q8);
-            SpaceAround();
+            // q6 join
+            var q6 = from r1 in xmlDoc.Descendants("route")
+                join r2 in xmlDoc.Descendants("route") on r1.Attribute("endStop").Value equals r2.Attribute("startStop").Value
+                select r1.Attribute("startStop").Value + "-" + r2.Attribute("startStop").Value + "-" + r2.Attribute("endStop").Value;
             
-            // sorting + aggregation
-            // 9 select top 3 routes by bus count, which serial num is more than 12
-            var q9 = (from route in depot.Routes
-                orderby route.AutoPark.Count(bus => Convert.ToInt32(bus.SerialNum) > 12) descending
-                select route.FullRoute).Take(3);
-            foreach (var route in q9) {
-                Console.WriteLine(route);
+            foreach (var route in q6)
+            {
+                System.Console.WriteLine(route);
             }
             SpaceAround();
 
-            // aggregation + filtration
-            // 10 count how many busses which serial number is less than 10 attend KPI station
-            var q10 = (from route in depot.Routes
-                where route.FullRoute.Contains("KPI")
-                select route.AutoPark.Count(trolley => Convert.ToInt32(trolley.SerialNum) < 10)).Sum();
-            Console.WriteLine(q10);
+            // q7 count busses who attend KPI
+            var q7 = xmlDoc.Descendants("route").Count(x => x.Attribute("startStop").Value == "KPI" || x.Attribute("endStop").Value == "KPI");
+            System.Console.WriteLine(q7);
             SpaceAround();
 
-            // intersect + selectmany + filter
-            // 11 select busses which route is less than 30 minutes long and more than 10 minutes long
-            var q11 = depot.Routes.Where(r => r.Time > 10)
-                .Intersect(depot.Routes.Where(r => r.Time < 30)).SelectMany(route => route.AutoPark);
-            foreach (var bus in q11) {
-                Console.WriteLine(bus);
+            // q8 check whether old busses take short rides
+            var q8 = (from trolley in xmlDoc.Descendants("trolley")
+                join route in xmlDoc.Descendants("route") on trolley.Attribute("routeNum").Value equals route.Attribute("routeNum").Value
+                where Convert.ToInt32(route.Attribute("time").Value) < 15
+                select trolley.Attribute("serialNum").Value)
+                .Any(x => Convert.ToInt32(x) < 5);
+            System.Console.WriteLine(q8);
+            SpaceAround();
+
+            // q9
+            var q9 = xmlDoc.Descendants("route").Where(x => Convert.ToInt32(x.Attribute("time").Value) < 50)
+                .Intersect(xmlDoc.Descendants("route").Where(x => Convert.ToInt32(x.Attribute("time").Value) > 10)).Select(x => x.Attribute("routeNum").Value);
+            foreach (var route in q9)
+            {
+                System.Console.WriteLine(route);
             }
             SpaceAround();
 
-            // grouping + aggregation
-            // 12 select average time to ride from every start station
-            var q12 = depot.Routes.GroupBy(route => route.Start.Name).Select(route => route.Average(rt => rt.Time));
-            foreach (var route in q12) {
-                Console.WriteLine(route);
-                SpaceAround('-');
+            // q 10 select route with most busses on it
+            var q10 = (from trolley in xmlDoc.Descendants("trolley")
+                group trolley.Attribute("serialNum").Value 
+                by trolley.Attribute("routeNum").Value)
+                .Select(x => new { routeNum=x.Key, count=x.Count()})
+                .OrderByDescending(x => x.count).Take(1);
+            foreach (var route in q10)
+            {
+                System.Console.WriteLine(route);
             }
             SpaceAround();
-
-            // aggregation
-            // 13 check skip routes while they have busses with number < 15 
-            var q13 = depot.Routes.SkipWhile(route => route.AutoPark.Any(bus => Convert.ToInt32(bus.SerialNum) < 15))
-                .Select(route => route.FullRoute);
-            foreach (var route in q13) {
-                Console.WriteLine(route);
-            }
-            SpaceAround();
-
-            // join + filter + aggregation
-            // 14 count cirlce routes
-            var q14 = (from route in depot.Routes
-                join route2 in depot.Routes on route.End.Name equals route2.Start.Name
-                where route.Start.Name == route2.End.Name
-                select route).Count();
-            Console.WriteLine(q14);
-            SpaceAround();
-
-            //15 select all unique stops
-            var q15 = depot.Routes.Select(route => route.Start.Name)
-                .Union(depot.Routes.Select(route => route.End.Name)).Aggregate((acc, val) => acc + "|" + val);
-            Console.WriteLine(q15);
         }
     }
 }

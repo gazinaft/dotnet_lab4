@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<transportSystem>
+  <route routeNum="1" startStop="KPI" endStop="Poznyaki" time="35" />
+  <route routeNum="2" startStop="Polyova" endStop="Vokzalna" time="5" />
+  <route routeNum="3" startStop="Bucha" endStop="KPI" time="55" />
+  <route routeNum="4" startStop="Vokzalna" endStop="Obolon" time="35" />
+  <route routeNum="5" startStop="Bucha" endStop="Vokzalna" time="15" />
+  <trolley serialNum="0" routeNum="1" />
+  <trolley serialNum="1" routeNum="1" />
+  <trolley serialNum="2" routeNum="1" />
+  <trolley serialNum="3" routeNum="1" />
+  <trolley serialNum="4" routeNum="1" />
+  <trolley serialNum="5" routeNum="2" />
+  <trolley serialNum="6" routeNum="2" />
+  <trolley serialNum="7" routeNum="2" />
+  <trolley serialNum="8" routeNum="3" />
+  <trolley serialNum="9" routeNum="3" />
+  <trolley serialNum="10" routeNum="4" />
+  <trolley serialNum="11" routeNum="4" />
+  <trolley serialNum="12" routeNum="4" />
+  <trolley serialNum="13" routeNum="4" />
+  <trolley serialNum="14" routeNum="4" />
+  <trolley serialNum="15" routeNum="5" />
+  <trolley serialNum="16" routeNum="5" />
+  <trolley serialNum="17" routeNum="5" />
+  <trolley serialNum="18" routeNum="5" />
+</transportSystem>
